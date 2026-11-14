@@ -1,0 +1,35 @@
+# .github/workflows/security.yml (guia, itens 2 e 20)
+name: Security
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1'   # toda segunda: pega CVE nova em dependência que não mudou
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # histórico completo
+      # Imagem oficial com versão fixa: não precisa de permissão extra no token.
+      - name: gitleaks
+        run: >
+          docker run --rm -v "$GITHUB_WORKSPACE:/repo" ghcr.io/gitleaks/gitleaks:v8.24.3
+          git /repo --redact --no-banner --exit-code 1
+
+  dependencies-npm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # Ajuste working-directory se o frontend estiver numa subpasta.
+      - run: npm audit --omit=dev --audit-level=high
